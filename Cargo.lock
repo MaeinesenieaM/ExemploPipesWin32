@@ -6,27 +6,14 @@ version = 4
 name = "main_pipes"
 version = "0.1.0"
 dependencies = [
- "windows-strings",
  "windows-sys",
 ]
 
 [[package]]
 name = "reader"
 version = "0.1.0"
-
-[[package]]
-name = "windows-link"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "76840935b766e1b0a05c0066835fb9ec80071d4c09a16f6bd5f7e655e3c14c38"
-
-[[package]]
-name = "windows-strings"
-version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "56e6c93f3a0c3b36176cb1327a4958a0353d5d166c2a35cb268ace15e91d3b57"
 dependencies = [
- "windows-link",
+ "windows-sys",
 ]
 
 [[package]]
