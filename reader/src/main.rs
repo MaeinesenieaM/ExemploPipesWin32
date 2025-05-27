@@ -1,8 +1,4 @@
 use std::io::{self, BufRead, BufReader, Write};
-use std::env;
-use windows_sys::Win32::System::Console::GetStdHandle;
-use windows_sys::Win32::System::Console::STD_INPUT_HANDLE;
-
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     

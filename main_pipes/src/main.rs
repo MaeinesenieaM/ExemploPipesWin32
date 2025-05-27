@@ -23,7 +23,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>>{
     let mut writer_path = PathBuf::from(&exe_path);
     reader_path.push("reader");
     writer_path.push("writer");
-    println!("{:?}\n{:?}", reader_path, writer_path);
 
     let mut pipe_output: HANDLE = ptr::null_mut(); //read
     let mut pipe_input: HANDLE = ptr::null_mut();  //write
@@ -86,7 +85,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>>{
         command_line_reader.push(0);
         let mut reader_pi: PROCESS_INFORMATION = MaybeUninit::zeroed().assume_init();
 
-        let success = CreateProcessA(
+        CreateProcessA(
             ptr::null(), // Use lpCommandLine for full path + args
             command_line_reader.as_mut_ptr(),
             ptr::null(),
@@ -98,17 +97,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>>{
             &reader,
             &mut reader_pi,
         );
-
-        println!("{success}");
         
         SetHandleInformation(pipe_output, HANDLE_FLAG_INHERIT , 0);
 
         CloseHandle(pipe_output);
         CloseHandle(pipe_input);
 
-        println!("Awaiting Writer to finish...");
+        println!("[CONSTRUCTOR] Awaiting Writer to finish...");
         WaitForSingleObject(writer_pi.hProcess, INFINITE);
-        println!("Awaiting Reader to finish...");
+        println!("[CONSTRUCTOR] Awaiting Reader to finish...");
         WaitForSingleObject(reader_pi.hProcess, INFINITE);
 
 
