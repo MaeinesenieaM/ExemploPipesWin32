@@ -1,14 +1,12 @@
-use std::ffi::CString;
 use std::mem::MaybeUninit;
 use windows_sys::{
     Win32::System::{Threading::*, Pipes::*},
     Win32::System::Console::{GetStdHandle, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE},
-    Win32::Foundation::{HANDLE, CloseHandle, SetHandleInformation, HANDLE_FLAG_INHERIT, TRUE, FALSE},
+    Win32::Foundation::{HANDLE, CloseHandle, SetHandleInformation, HANDLE_FLAG_INHERIT, TRUE},
     Win32::Security::SECURITY_ATTRIBUTES,
 };
 use std::{env, ptr};
 use std::path::PathBuf;
-//use windows_sys::Win32::Foundation::HANDLE_FLAGS;
 
 fn main() -> Result<(), Box<dyn std::error::Error>>{
 
@@ -67,7 +65,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>>{
             ptr::null(),
             ptr::null(),
             TRUE,
-            CREATE_NO_WINDOW,
+            0,
             ptr::null(),
             ptr::null(),
             &writer,
@@ -94,7 +92,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>>{
             ptr::null(),
             ptr::null(),
             TRUE,
-            CREATE_NO_WINDOW,
+            0,
             ptr::null(),
             ptr::null(),
             &reader,

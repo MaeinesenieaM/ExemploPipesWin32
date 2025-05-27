@@ -5,34 +5,42 @@ use windows_sys::Win32::System::Console::STD_INPUT_HANDLE;
 
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args: Vec<String> = env::args().collect();
-
-    let handle = unsafe { GetStdHandle(STD_INPUT_HANDLE) };
-    println!("stdin handle: {:?}", handle);
     
+    //Guarda as entradas e saídas do processo.
     let stdin = io::stdin();
+    
     let mut stdout = io::stdout();
-    let mut reader = BufReader::new(stdin.lock()); // Use BufReader for line-by-line reading
+    let mut stderr = io::stderr();
+    
+    //Prende o stdin para que nenhum outro processo, atrapalhe.
+    let mut reader = BufReader::new(stdin.lock());
+    //Cria uma String vazia para guardar os valores.
     let mut line = String::new();
-    println!("[Reader] Waiting for input (line by line)...");
+    
+    stderr.write("[Reader] Waiting for input (line by line)...\n".as_bytes())?;
+    stderr.flush()?;
 
     loop {
-        line.clear(); // Clear the buffer for the next line
-        match reader.read_line(&mut line) { // Read one line at a time
-            Ok(0) => { // 0 bytes read means EOF
-                stdout.write("[Reader] Received EOF (pipe closed).".as_bytes())?;
+        line.clear(); // Limpa o buffer da linha.
+        match reader.read_line(&mut line) { // read_line ler dados até chegar em '\n'.
+            Ok(0) => { //O número 0 significa 
+                stdout.write("[Reader] Received EOF.\n".as_bytes())?;
+                stdout.flush()?;
                 break;
             },
             Ok(_) => {
-                let out = format!("[Reader] Received line: {}", line.trim());
-                stdout.write(out.as_bytes())?;
+                stdout.write(format!("[Reader] Received line: {}\n", line.trim()).as_bytes())?;
+                stdout.flush()?;
             },
             Err(e) => {
-                eprintln!("[Reader] Error reading: {}", e);
+                stderr.write(format!("[Reader] Error reading: {}\n", e).as_bytes())?;
+                stderr.flush()?;
                 break;
             }
         }
     }
-    println!("[Reader] Finished reading.");
+    
+    stderr.write("[Reader] Finished reading..\n".as_bytes())?;
+    stderr.flush()?;
     Ok(())
 }
