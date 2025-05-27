@@ -3,7 +3,6 @@ use windows_sys::{
     Win32::System::{Threading::*, Pipes::*},
     Win32::System::Console::{GetStdHandle, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE},
     Win32::Foundation::{HANDLE, CloseHandle, SetHandleInformation, HANDLE_FLAG_INHERIT, TRUE},
-    Win32::Security::SECURITY_ATTRIBUTES,
 };
 use std::{env, ptr};
 use std::path::PathBuf;
@@ -24,20 +23,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>>{
     reader_path.push("reader");
     writer_path.push("writer");
 
+    //ptr::null_mut se equivale a void* NULL em C.
     let mut pipe_output: HANDLE = ptr::null_mut(); //read
     let mut pipe_input: HANDLE = ptr::null_mut();  //write
-
-    let mut security_pipe = SECURITY_ATTRIBUTES {
-        nLength: size_of::<SECURITY_ATTRIBUTES>() as u32,
-        lpSecurityDescriptor: ptr::null_mut(),
-        bInheritHandle: TRUE,
-    };
 
     unsafe {
         CreatePipe(
             &mut pipe_output,
             &mut pipe_input,
-            &mut security_pipe,
+            ptr::null(),
             0
         );
 
@@ -45,6 +39,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>>{
         let stdout_origem = GetStdHandle(STD_OUTPUT_HANDLE);
         
         //Aki nós trocamos a flag HANDLE_FLAG_INHERIT com outra HANDLE_FLAG_INHERIT.
+        SetHandleInformation(pipe_input, HANDLE_FLAG_INHERIT, 1);
         SetHandleInformation(pipe_output, HANDLE_FLAG_INHERIT, 0);
         
         let mut writer: STARTUPINFOA = MaybeUninit::zeroed().assume_init();

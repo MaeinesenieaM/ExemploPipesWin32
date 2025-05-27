@@ -25,8 +25,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 break;
             },
             Ok(_) => {
-                stdout.write(format!("[Reader] Received line: {}\n", line.trim()).as_bytes())?;
-                stdout.flush()?;
+                stderr.write(format!("[Reader] Received line: {}\n", line.trim()).as_bytes())?;
+                stderr.flush()?;
             },
             Err(e) => {
                 stderr.write(format!("[Reader] Error reading: {}\n", e).as_bytes())?;
