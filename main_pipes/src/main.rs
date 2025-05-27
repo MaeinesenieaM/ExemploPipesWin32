@@ -33,7 +33,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>>{
     let mut security_pipe = SECURITY_ATTRIBUTES {
         nLength: size_of::<SECURITY_ATTRIBUTES>() as u32,
         lpSecurityDescriptor: ptr::null_mut(),
-        bInheritHandle: FALSE,
+        bInheritHandle: TRUE,
     };
 
     unsafe {
@@ -48,7 +48,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>>{
         let stdout_origem = GetStdHandle(STD_OUTPUT_HANDLE);
         
         //Aki nós trocamos a flag HANDLE_FLAG_INHERIT com outra HANDLE_FLAG_INHERIT.
-        SetHandleInformation(pipe_input, HANDLE_FLAG_INHERIT, 1);
+        SetHandleInformation(pipe_output, HANDLE_FLAG_INHERIT, 0);
         
         let mut writer: STARTUPINFOA = MaybeUninit::zeroed().assume_init();
         writer.cb = size_of::<STARTUPINFOA>() as u32;
@@ -57,7 +57,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>>{
         writer.hStdError = stdout_origem;
         writer.hStdInput = stdin_origem;
 
-        let mut command_line_writer: Vec<u8> = Vec::from(reader_path.into_os_string().as_encoded_bytes());
+        let mut command_line_writer: Vec<u8> = Vec::from(writer_path.into_os_string().as_encoded_bytes());
         command_line_writer.push(0);
         let mut writer_pi: PROCESS_INFORMATION = MaybeUninit::zeroed().assume_init();
 
@@ -84,7 +84,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>>{
         reader.hStdError = stdout_origem;
         reader.hStdInput = pipe_output;
 
-        let mut command_line_reader: Vec<u8> = Vec::from(writer_path.into_os_string().as_encoded_bytes());
+        let mut command_line_reader: Vec<u8> = Vec::from(reader_path.into_os_string().as_encoded_bytes());
         command_line_reader.push(0);
         let mut reader_pi: PROCESS_INFORMATION = MaybeUninit::zeroed().assume_init();
 
@@ -107,8 +107,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>>{
 
         CloseHandle(pipe_output);
         CloseHandle(pipe_input);
-        
+
+        println!("Awaiting Writer to finish...");
         WaitForSingleObject(writer_pi.hProcess, INFINITE);
+        println!("Awaiting Reader to finish...");
         WaitForSingleObject(reader_pi.hProcess, INFINITE);
 
 
@@ -118,7 +120,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>>{
         CloseHandle(reader_pi.hThread);
     }
 
-    println!("counter: {:p}", pipe_output);
+    println!("all done!");
 
     Ok(())
 }

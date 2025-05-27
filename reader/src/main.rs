@@ -1,4 +1,4 @@
-use std::io::{self, BufRead, BufReader};
+use std::io::{self, BufRead, BufReader, Write};
 use std::env;
 use windows_sys::Win32::System::Console::GetStdHandle;
 use windows_sys::Win32::System::Console::STD_INPUT_HANDLE;
@@ -11,6 +11,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("stdin handle: {:?}", handle);
     
     let stdin = io::stdin();
+    let mut stdout = io::stdout();
     let mut reader = BufReader::new(stdin.lock()); // Use BufReader for line-by-line reading
     let mut line = String::new();
     println!("[Reader] Waiting for input (line by line)...");
@@ -19,11 +20,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         line.clear(); // Clear the buffer for the next line
         match reader.read_line(&mut line) { // Read one line at a time
             Ok(0) => { // 0 bytes read means EOF
-                println!("[Reader] Received EOF (pipe closed).");
+                stdout.write("[Reader] Received EOF (pipe closed).".as_bytes())?;
                 break;
             },
             Ok(_) => {
-                println!("[Reader] Received line: {}", line.trim());
+                let out = format!("[Reader] Received line: {}", line.trim());
+                stdout.write(out.as_bytes())?;
             },
             Err(e) => {
                 eprintln!("[Reader] Error reading: {}", e);
