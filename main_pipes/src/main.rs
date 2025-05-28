@@ -28,20 +28,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>>{
     let mut pipe_input: HANDLE = ptr::null_mut();  //write
 
     unsafe {
-        CreatePipe(
+        let sucesso = CreatePipe(
             &mut pipe_output,
             &mut pipe_input,
             ptr::null(),
-            0
+            4096
         );
+        if sucesso != 1 {
+            panic!("Erro ao criar tubo!")
+        };
 
         let stdin_origem = GetStdHandle(STD_INPUT_HANDLE);
         let stdout_origem = GetStdHandle(STD_OUTPUT_HANDLE);
         
-        //Aki nós trocamos a flag HANDLE_FLAG_INHERIT com outra HANDLE_FLAG_INHERIT.
-        SetHandleInformation(pipe_input, HANDLE_FLAG_INHERIT, 1);
-        SetHandleInformation(pipe_output, HANDLE_FLAG_INHERIT, 0);
-        
+        //Cria um STARTUPINFOA vazio.
         let mut writer: STARTUPINFOA = MaybeUninit::zeroed().assume_init();
         writer.cb = size_of::<STARTUPINFOA>() as u32;
         writer.dwFlags = STARTF_USESTDHANDLES;
@@ -49,13 +49,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>>{
         writer.hStdError = stdout_origem;
         writer.hStdInput = stdin_origem;
 
-        let mut command_line_writer: Vec<u8> = Vec::from(writer_path.into_os_string().as_encoded_bytes());
-        command_line_writer.push(0);
+        let mut reader: STARTUPINFOA = MaybeUninit::zeroed().assume_init();
+        reader.cb = size_of::<STARTUPINFOA>() as u32;
+        reader.dwFlags = STARTF_USESTDHANDLES;
+        reader.hStdOutput = stdout_origem;
+        reader.hStdError = stdout_origem;
+        reader.hStdInput = pipe_output;
+        
+        let mut writer_path_bytes: Vec<u8> = Vec::from(writer_path.into_os_string().as_encoded_bytes());
+        writer_path_bytes.push(0);
         let mut writer_pi: PROCESS_INFORMATION = MaybeUninit::zeroed().assume_init();
+        
+        let mut reader_path_bytes: Vec<u8> = Vec::from(reader_path.into_os_string().as_encoded_bytes());
+        reader_path_bytes.push(0);
+        let mut reader_pi: PROCESS_INFORMATION = MaybeUninit::zeroed().assume_init();
+        
+        SetHandleInformation(pipe_input, HANDLE_FLAG_INHERIT, 1);
+        SetHandleInformation(pipe_output, HANDLE_FLAG_INHERIT, 0);
 
         CreateProcessA(
             ptr::null(), // Use lpCommandLine for full path + args
-            command_line_writer.as_mut_ptr(),
+            writer_path_bytes.as_mut_ptr(),
             ptr::null(),
             ptr::null(),
             TRUE,
@@ -69,20 +83,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>>{
         SetHandleInformation(pipe_input, HANDLE_FLAG_INHERIT, 0);
         SetHandleInformation(pipe_output, HANDLE_FLAG_INHERIT , 1);
 
-        let mut reader: STARTUPINFOA = MaybeUninit::zeroed().assume_init();
-        reader.cb = size_of::<STARTUPINFOA>() as u32;
-        reader.dwFlags = STARTF_USESTDHANDLES;
-        reader.hStdOutput = stdout_origem;
-        reader.hStdError = stdout_origem;
-        reader.hStdInput = pipe_output;
-
-        let mut command_line_reader: Vec<u8> = Vec::from(reader_path.into_os_string().as_encoded_bytes());
-        command_line_reader.push(0);
-        let mut reader_pi: PROCESS_INFORMATION = MaybeUninit::zeroed().assume_init();
-
         CreateProcessA(
             ptr::null(), // Use lpCommandLine for full path + args
-            command_line_reader.as_mut_ptr(),
+            reader_path_bytes.as_mut_ptr(),
             ptr::null(),
             ptr::null(),
             TRUE,
@@ -98,9 +101,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>>{
         CloseHandle(pipe_output);
         CloseHandle(pipe_input);
 
-        println!("[CONSTRUCTOR] Awaiting Writer to finish...");
+        println!("[CONSTRUCTOR] Esperando que o Leitor termine...");
         WaitForSingleObject(writer_pi.hProcess, INFINITE);
-        println!("[CONSTRUCTOR] Awaiting Reader to finish...");
+        println!("[CONSTRUCTOR] Esperando que o Mensageiro termine...");
         WaitForSingleObject(reader_pi.hProcess, INFINITE);
 
 
@@ -110,7 +113,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>>{
         CloseHandle(reader_pi.hThread);
     }
 
-    println!("all done!");
+    println!("[CONSTRUCTOR] Pronto!");
 
     Ok(())
 }
