@@ -8,16 +8,11 @@ use std::{env, ptr};
 use std::path::PathBuf;
 
 fn main() -> Result<(), Box<dyn std::error::Error>>{
+    //Registra o caminho atual do arquivo.
+    let mut exe_path: PathBuf = env::current_exe()?;
+    exe_path.pop(); //Simplesmente transforma na pasta que o processo esta rodando.
 
-    let mut exe_path: PathBuf = env::current_exe()?; // Path to *this* parent executable
-    exe_path.pop();
-    // Ensure the path exists
-    if !exe_path.exists() {
-        eprintln!("Error: Child executable not found at {:?}", exe_path);
-        eprintln!("Please build the child program first: `cd child_program && cargo build --release`");
-        return Err(Box::from(format!("WHOOPS! Current path doesn't exist for some reason. {:?}", exe_path)));
-    }
-
+    //Registra caminhos para os outros processos.
     let mut reader_path = PathBuf::from(&exe_path);
     let mut writer_path = PathBuf::from(&exe_path);
     reader_path.push("reader");
@@ -45,8 +40,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>>{
         let mut writer: STARTUPINFOA = MaybeUninit::zeroed().assume_init();
         writer.cb = size_of::<STARTUPINFOA>() as u32;
         writer.dwFlags = STARTF_USESTDHANDLES;
-        writer.hStdOutput = pipe_input;
-        writer.hStdError = stdout_origem;
+        writer.hStdOutput = pipe_input; //Registra a entrada do Pipe na saida do mensageiro.
+        writer.hStdError = stdout_origem;   
         writer.hStdInput = stdin_origem;
 
         let mut reader: STARTUPINFOA = MaybeUninit::zeroed().assume_init();
@@ -54,25 +49,30 @@ fn main() -> Result<(), Box<dyn std::error::Error>>{
         reader.dwFlags = STARTF_USESTDHANDLES;
         reader.hStdOutput = stdout_origem;
         reader.hStdError = stdout_origem;
-        reader.hStdInput = pipe_output;
+        reader.hStdInput = pipe_output; //Registra a saida do Pipe na entrada do leitor.
         
+        //Conversão para UTF-8.
         let mut writer_path_bytes: Vec<u8> = Vec::from(writer_path.into_os_string().as_encoded_bytes());
         writer_path_bytes.push(0);
-        let mut writer_pi: PROCESS_INFORMATION = MaybeUninit::zeroed().assume_init();
-        
         let mut reader_path_bytes: Vec<u8> = Vec::from(reader_path.into_os_string().as_encoded_bytes());
         reader_path_bytes.push(0);
+
+        //Cria informações vazias para serem preenchidas por CreateProcess().
+        let mut writer_pi: PROCESS_INFORMATION = MaybeUninit::zeroed().assume_init();
         let mut reader_pi: PROCESS_INFORMATION = MaybeUninit::zeroed().assume_init();
         
+        //Precisamos desativar e ativar o herdar mento das entradas/saídas para garantir
+        //que as certas sejam escolhidas.
         SetHandleInformation(pipe_input, HANDLE_FLAG_INHERIT, 1);
         SetHandleInformation(pipe_output, HANDLE_FLAG_INHERIT, 0);
 
+        //Cria o mensageiro.
         CreateProcessA(
-            ptr::null(), // Use lpCommandLine for full path + args
+            ptr::null(),
             writer_path_bytes.as_mut_ptr(),
             ptr::null(),
             ptr::null(),
-            TRUE,
+            TRUE, //Garante que as entradas e saídas do Tubo sejam aceitas.
             0,
             ptr::null(),
             ptr::null(),
@@ -83,8 +83,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>>{
         SetHandleInformation(pipe_input, HANDLE_FLAG_INHERIT, 0);
         SetHandleInformation(pipe_output, HANDLE_FLAG_INHERIT , 1);
 
+        //Cria o leitor.
         CreateProcessA(
-            ptr::null(), // Use lpCommandLine for full path + args
+            ptr::null(),
             reader_path_bytes.as_mut_ptr(),
             ptr::null(),
             ptr::null(),
@@ -98,6 +99,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>>{
         
         SetHandleInformation(pipe_output, HANDLE_FLAG_INHERIT , 0);
 
+        //Após a criação dos processos fechamos os acessos para as entradas nesse processo
+        //para que outros processos possam utilizá-lo.
         CloseHandle(pipe_output);
         CloseHandle(pipe_input);
 
@@ -106,7 +109,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>>{
         println!("[CONSTRUCTOR] Esperando que o Mensageiro termine...");
         WaitForSingleObject(reader_pi.hProcess, INFINITE);
 
-
+        //Fecha os ponteiros para os processos.
         CloseHandle(writer_pi.hProcess);
         CloseHandle(writer_pi.hThread);
         CloseHandle(reader_pi.hProcess);
